@@ -132,7 +132,7 @@ static void drawStaticUI(const DashboardState& state) {
 }
 
 // ============================================================================
-// Original draw primitives — used for boot and by dirty-check functions
+// Draw primitives — used by dirty-check functions
 // ============================================================================
 
 static void drawHeaderRadioField(const DashboardState& state) {
@@ -170,7 +170,6 @@ static void drawTankHeaderDynamic(const DashboardState& state, int tankIndex, in
   uint16_t borderColor = isSelected ? ST77XX_YELLOW : ST77XX_WHITE;
   uint16_t titleFill   = isSelected ? (state.setMode ? ST77XX_CYAN : ST77XX_MAGENTA) : ST77XX_BLUE;
 
-  // redraw only header/top area + border so selection/mode style updates
   deselectRadio();
   tft.drawRoundRect(x, y, CARD_W, CARD_H, 8, borderColor);
   tft.fillRoundRect(x + 1, y + 1, CARD_W - 2, 20, 8, titleFill);
@@ -181,134 +180,6 @@ static void drawTankHeaderDynamic(const DashboardState& state, int tankIndex, in
   if (isSelected) tft.print(state.setMode ? "* " : "> ");
   else            tft.print("  ");
   tft.print(tankIndex == 0 ? "MAIN" : "RES");
-}
-
-static void drawTankValues(int x, int y, const TankState &t) {
-  float err = t.setpoint - t.filteredTemp;
-  float sd  = sensors::computeStdDev(t);
-
-  // Big temperature
-  clearField(x + 10, y + 28, 70, 40);
-  deselectRadio();
-  if (isValidTemp(t.rawTemp)) {
-    tft.setTextSize(4);
-    tft.setTextColor(sensors::getStatusColor(t));
-    tft.setCursor(x + 10, y + 30);
-    tft.print(t.filteredTemp, 1);
-  } else {
-    tft.setTextSize(3);
-    tft.setTextColor(ST77XX_RED);
-    tft.setCursor(x + 10, y + 34);
-    tft.print("ERR");
-  }
-
-  tft.setTextSize(1);
-
-  // SP
-  clearField(x + 28, y + 86, 48, 9);
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setCursor(x + 28, y + 86);
-  tft.print(t.setpoint, 1);
-
-  // dT
-  clearField(x + 28, y + 98, 48, 9);
-  tft.setCursor(x + 28, y + 98);
-  tft.setTextColor(ST77XX_WHITE);
-  if (err >= 0) tft.print("+");
-  tft.print(err, 1);
-
-  // RAW
-  clearField(x + 34, y + 110, 42, 9);
-  tft.setCursor(x + 34, y + 110);
-  if (isValidTemp(t.rawTemp)) {
-    tft.setTextColor(ST77XX_WHITE);
-    tft.print(t.rawTemp, 1);
-  } else {
-    tft.setTextColor(ST77XX_RED);
-    tft.print("ERR");
-  }
-
-  // SD
-  clearField(x + 24, y + 122, 52, 9);
-  tft.setCursor(x + 24, y + 122);
-  tft.setTextColor(ST77XX_WHITE);
-  if (isnan(sd)) tft.print("--");
-  else tft.print(sd, 2);
-
-  // Trend
-  clearField(x + 116, y + 86, 28, 9);
-  tft.setCursor(x + 116, y + 86);
-  tft.setTextColor(sensors::getTrendColor(t));
-  tft.print(sensors::getTrendText(t));
-
-  // Status
-  clearField(x + 108, y + 98, 36, 9);
-  tft.setCursor(x + 108, y + 98);
-  tft.setTextColor(sensors::getStatusColor(t));
-  tft.print(sensors::getStatusText(t));
-}
-
-static void drawFooterFields(const DashboardState& state) {
-  char atspBuf[9];
-  formatTimeHHMMSS(state.timeAtSetpointSec, atspBuf);
-
-  // BTN
-  clearField(10, 204, 88, 10);
-  deselectRadio();
-  tft.setTextSize(1);
-  tft.setTextColor(ST77XX_YELLOW);
-  tft.setCursor(10, 204);
-  tft.print(state.lastButtonEvent);
-
-  // SEL
-  clearField(112, 204, 60, 10);
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setCursor(112, 204);
-  tft.print(state.selectedTank == 0 ? "MAIN" : "RES");
-
-  // MODE
-  clearField(190, 204, 48, 10);
-  tft.setCursor(190, 204);
-  tft.setTextColor(state.setMode ? ST77XX_CYAN : ST77XX_RED);
-  tft.print(state.setMode ? "SET" : "VIEW");
-
-  // ATSP
-  clearField(255, 204, 55, 10);
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setCursor(255, 204);
-  tft.print(atspBuf);
-
-  // MAIN temp footer
-  clearField(10, 226, 80, 10);
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setCursor(10, 226);
-  if (isValidTemp(state.main.rawTemp)) tft.print(state.main.filteredTemp, 1);
-  else tft.print("ERR");
-
-  // RES temp footer
-  clearField(112, 226, 70, 10);
-  tft.setCursor(112, 226);
-  if (isValidTemp(state.res.rawTemp)) tft.print(state.res.filteredTemp, 1);
-  else tft.print("ERR");
-
-  // BAND
-  clearField(190, 226, 48, 10);
-  tft.setCursor(190, 226);
-  tft.setTextColor(state.atSetpoint ? ST77XX_GREEN : ST77XX_RED);
-  tft.print(state.atSetpoint ? "YES" : "NO");
-}
-
-static void updateDynamicUI(const DashboardState& state) {
-  drawHeaderRadioField(state);
-  drawHeaderRunField(state);
-
-  drawTankHeaderDynamic(state, 0, MAIN_X, CARD_Y);
-  drawTankHeaderDynamic(state, 1, RES_X,  CARD_Y);
-
-  drawTankValues(MAIN_X, CARD_Y, state.main);
-  drawTankValues(RES_X,  CARD_Y, state.res);
-
-  drawFooterFields(state);
 }
 
 // ============================================================================
@@ -508,36 +379,31 @@ static void drawFooterDirty(const DashboardState& state) {
 }
 
 // ============================================================================
-// Cache snapshot helper
+// Invalidate cache so dirty-check redraws everything on first pass
 // ============================================================================
 
-static void snapshotCache(const DashboardState& state) {
-  if (!state.radioInitOk) cache.radioStatus = -1;
-  else if (state.lastTxOk) cache.radioStatus = 1;
-  else cache.radioStatus = 0;
-  cache.runtimeSec = (millis() - state.bootMs) / 1000UL;
-
+static void invalidateCache() {
+  cache.radioStatus = 127;  // impossible value
+  cache.runtimeSec = 0xFFFFFFFF;
   for (int i = 0; i < 2; i++) {
-    const TankState& t = (i == 0) ? state.main : state.res;
     TankCache& tc = cache.tanks[i];
-    tc.temp = t.filteredTemp;
-    tc.statusCode = sensors::getStatusCode(t);
-    tc.setpoint = t.setpoint;
-    tc.error = t.setpoint - t.filteredTemp;
-    tc.rawTemp = t.rawTemp;
-    tc.stddev = sensors::computeStdDev(t);
-    tc.trendCode = sensors::getTrendCode(t);
-    tc.isSelected = (state.selectedTank == i);
-    tc.inSetMode = state.setMode;
+    tc.temp = NAN;
+    tc.statusCode = 127;
+    tc.setpoint = NAN;
+    tc.error = NAN;
+    tc.rawTemp = NAN;
+    tc.stddev = NAN;
+    tc.trendCode = 127;
+    tc.isSelected = !!(i);  // opposite of default
+    tc.inSetMode = true;
   }
-
-  cache.buttonEvent = state.lastButtonEvent;
-  cache.selectedTank = state.selectedTank;
-  cache.setMode = state.setMode;
-  cache.atSpSec = state.timeAtSetpointSec;
-  cache.atSetpoint = state.atSetpoint;
-  cache.footerMainTemp = state.main.filteredTemp;
-  cache.footerResTemp = state.res.filteredTemp;
+  cache.buttonEvent = nullptr;
+  cache.selectedTank = 255;
+  cache.setMode = true;
+  cache.atSpSec = 0xFFFFFFFF;
+  cache.atSetpoint = true;
+  cache.footerMainTemp = NAN;
+  cache.footerResTemp = NAN;
 }
 
 // ============================================================================
@@ -550,8 +416,8 @@ void display::init(DashboardState& state) {
   tft.setTextWrap(false);
 
   drawStaticUI(state);
-  updateDynamicUI(state);
-  snapshotCache(state);
+  invalidateCache();
+  // First update cycle will redraw all dynamic fields via dirty-check
 }
 
 void display::update(DashboardState& state) {

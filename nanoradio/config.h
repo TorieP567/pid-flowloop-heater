@@ -83,10 +83,12 @@ inline bool isValidTemp(float t) {
 
 inline void formatTimeHHMMSS(unsigned long totalSec, char* buf) {
   if (totalSec > 359999UL) totalSec = 359999UL;
-  unsigned long h = totalSec / 3600UL;
-  unsigned long m = (totalSec % 3600UL) / 60UL;
-  unsigned long s = totalSec % 60UL;
-  sprintf(buf, "%02lu:%02lu:%02lu", h, m, s);
+  uint8_t h = totalSec / 3600UL;
+  uint8_t m = (totalSec % 3600UL) / 60UL;
+  uint8_t s = totalSec % 60UL;
+  buf[0] = '0' + h / 10; buf[1] = '0' + h % 10; buf[2] = ':';
+  buf[3] = '0' + m / 10; buf[4] = '0' + m % 10; buf[5] = ':';
+  buf[6] = '0' + s / 10; buf[7] = '0' + s % 10; buf[8] = '\0';
 }
 
 #endif // CONFIG_H
