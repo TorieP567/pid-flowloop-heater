@@ -145,8 +145,9 @@ struct TankLocalState {
   float requestedSetpointC;
 };
 
+template <size_t N>
 struct TextFieldCache {
-  char text[32];
+  char text[N];
   uint16_t color;
   bool valid;
 };
@@ -196,17 +197,17 @@ unsigned long rxBadCount = 0;
 
 LinkState lastLoggedLinkState = LINK_STATE_WAITING;
 
-TextFieldCache mainLinkCache = {};
-TextFieldCache mainModeCache = {};
-TextFieldCache mainFaultCache = {};
-TextFieldCache mainInfoCache = {};
-TextFieldCache mainTempCache[TANK_COUNT] = {};
-TextFieldCache mainSourceCache[TANK_COUNT] = {};
-TextFieldCache mainReqCache[TANK_COUNT] = {};
-TextFieldCache mainActCache[TANK_COUNT] = {};
-TextFieldCache mainOutCache[TANK_COUNT] = {};
+TextFieldCache<12> mainLinkCache = {};
+TextFieldCache<12> mainModeCache = {};
+TextFieldCache<32> mainFaultCache = {};
+TextFieldCache<32> mainInfoCache = {};
+TextFieldCache<12> mainTempCache[TANK_COUNT] = {};
+TextFieldCache<8> mainSourceCache[TANK_COUNT] = {};
+TextFieldCache<8> mainReqCache[TANK_COUNT] = {};
+TextFieldCache<8> mainActCache[TANK_COUNT] = {};
+TextFieldCache<12> mainOutCache[TANK_COUNT] = {};
 
-TextFieldCache debugLineCache[10] = {};
+TextFieldCache<32> debugLineCache[10] = {};
 int8_t mainFrameSelectedTank = -1;
 bool mainFrameEditMode = false;
 
@@ -243,7 +244,8 @@ void prepareForSensors() {
   digitalWrite(TFT_CS_PIN, HIGH);
 }
 
-void invalidateField(TextFieldCache& cache) {
+template <size_t N>
+void invalidateField(TextFieldCache<N>& cache) {
   cache.text[0] = '\0';
   cache.color = 0;
   cache.valid = false;
@@ -268,7 +270,8 @@ void invalidateAllCaches() {
   mainFrameEditMode = false;
 }
 
-void updateTextField(TextFieldCache& cache, const char* text, uint16_t color,
+template <size_t N>
+void updateTextField(TextFieldCache<N>& cache, const char* text, uint16_t color,
                      int16_t x, int16_t y, int16_t w, int16_t h,
                      uint8_t textSize, uint16_t bgColor = COLOR_BG) {
   if (w <= 0 || h <= 0) return;
