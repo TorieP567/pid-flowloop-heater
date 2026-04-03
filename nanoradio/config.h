@@ -53,6 +53,16 @@ constexpr float SETPOINT_STEP_C = 0.1f;
 }  // namespace setpoint
 
 // -----------------------------------------------------------------------------
+// Local display/filter tuning
+// -----------------------------------------------------------------------------
+namespace ui {
+constexpr float EMA_ALPHA = 0.30f;
+constexpr float AT_SETPOINT_BAND_C = 1.0f;
+constexpr float TREND_THRESHOLD_C = 0.20f;
+constexpr uint8_t HISTORY_LEN = 8;
+}  // namespace ui
+
+// -----------------------------------------------------------------------------
 // Temperature thresholds
 // -----------------------------------------------------------------------------
 namespace temperature {
@@ -72,6 +82,7 @@ constexpr unsigned long RADIO_TX_INTERVAL_MS = 150UL;
 constexpr unsigned long DISPLAY_INTERVAL_MS = 100UL;
 constexpr unsigned long LOG_INTERVAL_MS = 500UL;
 constexpr unsigned long BUTTON_DEBOUNCE_MS = 30UL;
+constexpr unsigned long BUTTON_MESSAGE_HOLD_MS = 1200UL;
 constexpr unsigned long SET_LONG_PRESS_MS = 700UL;
 constexpr unsigned long SCREEN_TOGGLE_HOLD_MS = 900UL;
 constexpr unsigned long STATUS_DEGRADED_MS = 900UL;
@@ -101,19 +112,21 @@ namespace layout {
 constexpr int SCREEN_W = 320;
 constexpr int SCREEN_H = 240;
 
-constexpr int HEADER_X = 0;
-constexpr int HEADER_Y = 0;
-constexpr int HEADER_W = SCREEN_W;
-constexpr int HEADER_H = 30;
+constexpr int HEADER_X = 4;
+constexpr int HEADER_Y = 4;
+constexpr int HEADER_W = 312;
+constexpr int HEADER_H = 24;
 
-constexpr int CARD_W = 148;
-constexpr int CARD_H = 138;
+constexpr int CARD_W = 150;
+constexpr int CARD_H = 146;
 constexpr int CARD_Y = 34;
-constexpr int MAIN_X = 8;
+constexpr int MAIN_X = 6;
 constexpr int RES_X = 164;
 
-constexpr int FOOT_Y = 180;
-constexpr int FOOT_H = 60;
+constexpr int FOOT_X = 4;
+constexpr int FOOT_Y = 186;
+constexpr int FOOT_W = 312;
+constexpr int FOOT_H = 48;
 }  // namespace layout
 
 // -----------------------------------------------------------------------------

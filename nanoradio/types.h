@@ -34,8 +34,12 @@ struct ButtonTracker {
 // Local tank data gathered on the remote before the main box acknowledges it.
 struct TankLocalState {
   float rawTempC;
+  float filteredTempC;
   bool valid;
   float requestedSetpointC;
+  float history[config::ui::HISTORY_LEN];
+  uint8_t historyIndex;
+  uint8_t historyCount;
 };
 
 // Cross-module runtime state for the production remote implementation.
@@ -93,6 +97,12 @@ struct DashboardState {
   uint8_t pendingButtonFlags;
   // Button-event bits to include in the next uplink packet.
 
+  const char* lastButtonEvent;
+  // Last UI button action shown in the footer.
+
+  unsigned long lastButtonEventAtMs;
+  // Timestamp used to clear the footer button event after a short hold.
+
   unsigned long bootMs;
   // millis() snapshot captured during setup.
 
@@ -125,6 +135,12 @@ struct DashboardState {
 
   unsigned long rxBadCount;
   // Count of received status packets rejected by version or CRC.
+
+  unsigned long timeAtSetpointSec;
+  // Local timer for how long both tanks have remained within the local band.
+
+  bool atSetpoint;
+  // Local in-band summary used by the original nanoradio footer.
 
   LinkState lastLoggedLinkState;
   // Most recent link state already reported on the serial console.

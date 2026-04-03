@@ -1,5 +1,8 @@
 #include "buttons.h"
 
+#include <math.h>
+#include <string.h>
+
 #include "config.h"
 
 namespace {
@@ -52,12 +55,22 @@ void toggleScreenMode(DashboardState& state) {
   state.displayNeedsFullRedraw = true;
 }
 
-void adjustSelectedSetpoint(DashboardState& state, float deltaC) {
+bool adjustSelectedSetpoint(DashboardState& state, float deltaC) {
   TankLocalState& tank = state.localTanks[state.selectedTank];
-  tank.requestedSetpointC = config::clampFloat(
+  const float updated = config::clampFloat(
       tank.requestedSetpointC + deltaC,
       config::setpoint::MIN_SETPOINT_C,
       config::setpoint::MAX_SETPOINT_ALLOWED_C);
+  if (fabsf(updated - tank.requestedSetpointC) < 0.001f) {
+    return false;
+  }
+  tank.requestedSetpointC = updated;
+  return true;
+}
+
+void setButtonEvent(DashboardState& state, const char* eventText) {
+  state.lastButtonEvent = eventText;
+  state.lastButtonEventAtMs = millis();
 }
 
 }  // namespace
@@ -112,22 +125,33 @@ void update(DashboardState& state) {
     setButton.longHandled = true;
     state.editMode = !state.editMode;
     state.pendingButtonFlags |= REMOTE_BUTTON_SET;
+    setButtonEvent(state, "EDIT");
   }
 
   if (setReleased && !setButton.longHandled) {
     state.selectedTank = (state.selectedTank == config::TANK_MAIN) ? config::TANK_RES : config::TANK_MAIN;
     state.pendingButtonFlags |= REMOTE_BUTTON_SET;
+    setButtonEvent(state, "SET");
   }
 
   if (!comboActive && state.editMode) {
     if (upPressed && downButton.stableState != LOW) {
-      adjustSelectedSetpoint(state, config::setpoint::SETPOINT_STEP_C);
-      state.pendingButtonFlags |= REMOTE_BUTTON_UP;
+      if (adjustSelectedSetpoint(state, config::setpoint::SETPOINT_STEP_C)) {
+        state.pendingButtonFlags |= REMOTE_BUTTON_UP;
+        setButtonEvent(state, "UP");
+      }
     }
     if (downPressed && upButton.stableState != LOW) {
-      adjustSelectedSetpoint(state, -config::setpoint::SETPOINT_STEP_C);
-      state.pendingButtonFlags |= REMOTE_BUTTON_DOWN;
+      if (adjustSelectedSetpoint(state, -config::setpoint::SETPOINT_STEP_C)) {
+        state.pendingButtonFlags |= REMOTE_BUTTON_DOWN;
+        setButtonEvent(state, "DOWN");
+      }
     }
+  }
+
+  if (strcmp(state.lastButtonEvent, "NONE") != 0 &&
+      (nowMs - state.lastButtonEventAtMs) > config::timing::BUTTON_MESSAGE_HOLD_MS) {
+    state.lastButtonEvent = "NONE";
   }
 
   (void)setPressed;

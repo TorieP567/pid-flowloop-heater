@@ -46,8 +46,14 @@ namespace {
 void initializeState(DashboardState& dashboard) {
   for (uint8_t tank = 0; tank < config::TANK_COUNT; ++tank) {
     dashboard.localTanks[tank].rawTempC = NAN;
+    dashboard.localTanks[tank].filteredTempC = config::setpoint::DEFAULT_SETPOINT_C;
     dashboard.localTanks[tank].valid = false;
     dashboard.localTanks[tank].requestedSetpointC = config::setpoint::DEFAULT_SETPOINT_C;
+    dashboard.localTanks[tank].historyIndex = 0;
+    dashboard.localTanks[tank].historyCount = 0;
+    for (uint8_t index = 0; index < config::ui::HISTORY_LEN; ++index) {
+      dashboard.localTanks[tank].history[index] = config::setpoint::DEFAULT_SETPOINT_C;
+    }
   }
 
   for (uint8_t index = 0; index < 3; ++index) {
@@ -76,6 +82,8 @@ void initializeState(DashboardState& dashboard) {
   dashboard.txSequence = 0;
   dashboard.lastStatusSequence = 0;
   dashboard.pendingButtonFlags = 0;
+  dashboard.lastButtonEvent = "NONE";
+  dashboard.lastButtonEventAtMs = 0;
 
   dashboard.bootMs = 0;
   dashboard.sensorsReadyAtMs = 0;
@@ -89,6 +97,8 @@ void initializeState(DashboardState& dashboard) {
   dashboard.txFailCount = 0;
   dashboard.rxOkCount = 0;
   dashboard.rxBadCount = 0;
+  dashboard.timeAtSetpointSec = 0;
+  dashboard.atSetpoint = false;
   dashboard.lastLoggedLinkState = LINK_STATE_WAITING;
 }
 
