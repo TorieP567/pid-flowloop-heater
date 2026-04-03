@@ -1,3 +1,6 @@
+// Legacy remote sketch reference.
+// Active repo architecture is documented in firmware/ and docs/, and the remote must match firmware/shared/system_packets.h.
+
 #include <SPI.h>
 #include "config.h"
 #include "types.h"

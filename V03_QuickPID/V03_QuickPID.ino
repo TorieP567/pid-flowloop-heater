@@ -1,3 +1,6 @@
+// Legacy reference sketch.
+// Active two-MCU main-box firmware now lives in firmware/main_box_uno/ and firmware/main_box_nano_bridge/.
+
 #include <math.h>
 #include <SPI.h>
 #include <nRF24L01.h>

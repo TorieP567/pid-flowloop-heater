@@ -1,3 +1,6 @@
+// Legacy payload definition retained for the previous radio-only architecture.
+// Active packet definitions now live in firmware/shared/system_packets.h.
+
 #ifndef RADIO_PAYLOAD_H
 #define RADIO_PAYLOAD_H
 
