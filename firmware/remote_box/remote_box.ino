@@ -38,7 +38,7 @@
 #include <Adafruit_ST7789.h>
 #include <max6675.h>
 
-#include "../shared/system_packets.h"
+#include "system_packets.h"
 
 namespace {
 
