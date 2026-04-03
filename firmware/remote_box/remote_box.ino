@@ -53,6 +53,7 @@ constexpr uint8_t TANK_RES = 1;
 
 constexpr uint8_t RADIO_CE_PIN = 9;
 constexpr uint8_t RADIO_CSN_PIN = 10;
+constexpr uint8_t RADIO_CHANNEL = SYSTEM_RADIO_CHANNEL;
 
 constexpr uint8_t THERMO_SCK_PIN = 5;
 constexpr uint8_t THERMO_SO_MAIN_PIN = 7;
@@ -86,8 +87,8 @@ constexpr unsigned long LOG_INTERVAL_MS = 500UL;
 constexpr unsigned long BUTTON_DEBOUNCE_MS = 30UL;
 constexpr unsigned long SET_LONG_PRESS_MS = 700UL;
 constexpr unsigned long SCREEN_TOGGLE_HOLD_MS = 900UL;
-constexpr unsigned long STATUS_DEGRADED_MS = 600UL;
-constexpr unsigned long STATUS_TIMEOUT_MS = 1500UL;
+constexpr unsigned long STATUS_DEGRADED_MS = 900UL;
+constexpr unsigned long STATUS_TIMEOUT_MS = 2000UL;
 
 constexpr uint16_t COLOR_BG = ST77XX_BLACK;
 constexpr uint16_t COLOR_PANEL = 0x1084;
@@ -504,7 +505,7 @@ void initRadio() {
 
   radioHw.setPALevel(RF24_PA_LOW);
   radioHw.setDataRate(RF24_250KBPS);
-  radioHw.setChannel(SYSTEM_RADIO_CHANNEL);
+  radioHw.setChannel(RADIO_CHANNEL);
   radioHw.setAutoAck(false);
   radioHw.openWritingPipe(SYSTEM_PIPE_REMOTE_TO_MAIN);
   radioHw.openReadingPipe(1, SYSTEM_PIPE_MAIN_TO_REMOTE);

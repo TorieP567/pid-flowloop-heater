@@ -39,15 +39,16 @@ namespace {
 
 constexpr uint8_t RADIO_CE_PIN = 9;
 constexpr uint8_t RADIO_CSN_PIN = 10;
+constexpr uint8_t RADIO_CHANNEL = SYSTEM_RADIO_CHANNEL;
 
 constexpr float DEFAULT_SETPOINT_C = 37.0f;
 
-constexpr unsigned long REMOTE_TIMEOUT_MS = 1500UL;
-constexpr unsigned long LOCAL_BRIDGE_TIMEOUT_MS = 1200UL;
+constexpr unsigned long REMOTE_TIMEOUT_MS = 2000UL;
+constexpr unsigned long LOCAL_BRIDGE_TIMEOUT_MS = 1600UL;
 constexpr unsigned long I2C_COMMAND_INTERVAL_MS = 100UL;
 constexpr unsigned long I2C_STATUS_INTERVAL_MS = 100UL;
 constexpr unsigned long RADIO_STATUS_INTERVAL_MS = 150UL;
-constexpr unsigned long LOG_INTERVAL_MS = 500UL;
+constexpr unsigned long LOG_INTERVAL_MS = 1000UL;
 
 RF24 radioHw(RADIO_CE_PIN, RADIO_CSN_PIN);
 
@@ -125,7 +126,7 @@ void initRadio() {
 
   radioHw.setPALevel(RF24_PA_LOW);
   radioHw.setDataRate(RF24_250KBPS);
-  radioHw.setChannel(SYSTEM_RADIO_CHANNEL);
+  radioHw.setChannel(RADIO_CHANNEL);
   radioHw.setAutoAck(false);
   radioHw.openReadingPipe(1, SYSTEM_PIPE_REMOTE_TO_MAIN);
   radioHw.openWritingPipe(SYSTEM_PIPE_MAIN_TO_REMOTE);
@@ -334,7 +335,14 @@ void sendStatusToRemote() {
 void printLogHeader() {
   Serial.println("# main_box_nano_bridge | Nano radio/I2C bridge");
   Serial.println("# Radio CE=D9 CSN=D10 | I2C master to Uno 0x42");
-  Serial.println("# nRF24 note: add 10 uF decoupling capacitor close to VCC/GND");
+  Serial.print("# RF channel=");
+  Serial.print(RADIO_CHANNEL);
+  Serial.println(" | dataRate=250KBPS | timeouts ms: remote=2000 localBridge=1600");
+  Serial.println("# RF checklist: add 10-47uF across nRF24 VCC/GND close to the module");
+  Serial.println("# RF checklist: use a stable 3.3V supply only; never feed the radio 5V");
+  Serial.println("# RF checklist: keep antennas clear of metal, heater wiring, and each other");
+  Serial.println("# RF checklist: if dropouts persist, try a quieter channel and antenna orientation");
+  Serial.println("# I2C status err codes: 0=ok,1=short read,2=partial read,3=bad packet");
 }
 
 void logData() {
@@ -370,10 +378,12 @@ void logData() {
   Serial.print(i2cStatusFailCount);
   Serial.print(",I2CStatusErr:");
   Serial.print(lastUnoStatusError);
-  Serial.print(",LocalBridgeFresh:");
-  Serial.print(localBridgeFresh(nowMs) ? 1 : 0);
   Serial.print(",UnoStatusAge:");
   Serial.print(haveUnoStatus ? (nowMs - lastUnoStatusMs) : 65535UL);
+  Serial.print(",UnoStatusFresh:");
+  Serial.print(unoStatusFresh(nowMs) ? 1 : 0);
+  Serial.print(",LocalBridgeFresh:");
+  Serial.print(localBridgeFresh(nowMs) ? 1 : 0);
   Serial.print(",RadioTxOK:");
   Serial.print(lastRadioTxOk ? 1 : 0);
 

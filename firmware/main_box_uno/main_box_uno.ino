@@ -56,8 +56,8 @@ constexpr unsigned long CONTROL_INTERVAL_MS = 500UL;
 constexpr unsigned long LOG_INTERVAL_MS = 500UL;
 constexpr unsigned long RETUNE_INTERVAL_MS = 5000UL;
 constexpr unsigned long WARMUP_TIME_MS = 30000UL;
-constexpr unsigned long BRIDGE_TIMEOUT_MS = 1200UL;
-constexpr unsigned long REMOTE_TIMEOUT_MS = 1500UL;
+constexpr unsigned long BRIDGE_TIMEOUT_MS = 1600UL;
+constexpr unsigned long REMOTE_TIMEOUT_MS = 2000UL;
 constexpr unsigned long STATUS_PUBLISH_INTERVAL_MS = 100UL;
 
 struct TankState {
