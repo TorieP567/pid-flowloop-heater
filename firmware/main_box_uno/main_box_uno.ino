@@ -27,6 +27,8 @@
 namespace {
 
 constexpr uint8_t TANK_COUNT = 2;
+constexpr uint8_t TANK_MAIN = 0;
+constexpr uint8_t TANK_RES = 1;
 
 constexpr uint8_t HEAT_PIN_MAIN = 7;
 constexpr uint8_t HEAT_PIN_RES = 6;
@@ -45,6 +47,8 @@ constexpr double INTEGRAL_MIN = -25.0;
 constexpr double INTEGRAL_MAX = 100.0;
 constexpr double TREND_THRESHOLD_C = 0.20;
 constexpr double AT_SETPOINT_BAND_C = 1.0;
+constexpr double MAIN_PRIORITY_WARMUP_ON_ERROR_C = 2.5;
+constexpr double MAIN_PRIORITY_WARMUP_OFF_ERROR_C = 1.0;
 
 constexpr double MIN_REASONABLE_TEMP_C = -20.0;
 constexpr double MAX_REASONABLE_TEMP_C = 120.0;
@@ -120,6 +124,7 @@ unsigned long lastAtSetpointCheckMs = 0;
 unsigned long bootMs = 0;
 unsigned long timeAtSetpointSec = 0;
 bool atSetpoint = false;
+bool mainPriorityWarmupActive = false;
 
 uint16_t statusSequence = 0;
 
@@ -262,6 +267,33 @@ bool tankForcedOff(uint8_t tank, unsigned long nowMs) {
   if (tankSensorFault(tank)) return true;
   if (tankOverTempFault(tank)) return true;
   return false;
+}
+
+void updateMainPriorityWarmupMode(unsigned long nowMs) {
+  if (tankForcedOff(TANK_MAIN, nowMs) || !isReasonableTemp(tanks[TANK_MAIN].filteredTemp)) {
+    mainPriorityWarmupActive = false;
+    return;
+  }
+
+  double mainError = tanks[TANK_MAIN].setpoint - tanks[TANK_MAIN].filteredTemp;
+  if (mainPriorityWarmupActive) {
+    if (mainError <= MAIN_PRIORITY_WARMUP_OFF_ERROR_C) {
+      mainPriorityWarmupActive = false;
+    }
+  } else if (mainError >= MAIN_PRIORITY_WARMUP_ON_ERROR_C) {
+    mainPriorityWarmupActive = true;
+  }
+}
+
+void applyMainPriorityWarmup(unsigned long nowMs) {
+  updateMainPriorityWarmupMode(nowMs);
+  if (!mainPriorityWarmupActive) return;
+
+  if (!tankForcedOff(TANK_MAIN, nowMs)) {
+    tanks[TANK_MAIN].outputPct = 100.0;
+  }
+
+  resetTankControlState(TANK_RES);
 }
 
 void updateRLSModel(uint8_t tank) {
@@ -586,6 +618,7 @@ void runControl() {
     state.prevModelOutputNorm = state.outputPct / 100.0;
   }
 
+  applyMainPriorityWarmup(nowMs);
   updateAtSetpointTimer(nowMs);
 }
 
@@ -675,6 +708,7 @@ void printLogHeader() {
   Serial.println("# main_box_uno | Uno R4 Minima heater authority");
   Serial.println("# Bridge: I2C slave at 0x42 | SSR MAIN=D7 | SSR RES=D6");
   Serial.println("# Preserved legacy behavior: EMA, trend, RLS model ID, retune, adaptive control, 1 s SSR window");
+  Serial.println("# MAIN priority warmup: MAIN forced to 100%, RES held off while MAIN error >= 2.5 C; return below 1.0 C");
 }
 
 void logData() {
@@ -694,6 +728,8 @@ void logData() {
   Serial.print(localBridgeFault(nowMs) ? 1 : 0);
   Serial.print(",CommFault:");
   Serial.print((haveCommand && remoteCommFault(latestCommand)) ? 1 : 0);
+  Serial.print(",MainPrioWarm:");
+  Serial.print(mainPriorityWarmupActive ? 1 : 0);
   Serial.print(",AtSP:");
   Serial.print(atSetpoint ? 1 : 0);
   Serial.print(",AtSPSec:");
