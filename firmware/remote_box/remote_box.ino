@@ -12,7 +12,7 @@
 // Important:
 //   - this board is NOT the final heater-control authority
 //   - the main-box Uno R4 remains responsible for both SSR heater outputs
-//   - this firmware reuses the shared packet contract in ../shared/system_packets.h
+//   - this firmware reuses the shared packet contract via the local system_packets.h
 //
 // Hardware notes:
 //   - the nRF24, ST7789, and MAX6675 modules share SPI-related lines
