@@ -1,122 +1,134 @@
 # Hardware And Pinout
 
-## Main Box Uno R4 Minima
+This document reflects the current canonical circuit wiring for the active
+firmware under [`firmware/`](../firmware/).
+
+## Main Box
+
+### Arduino Uno R4 Minima
 
 Role: final heater controller
 
-| Signal | Pin | Notes |
+| Connection | Pin | Notes |
 |---|---:|---|
-| SSR MAIN | `D7` | MAIN tank heater output |
-| SSR RES | `D6` | RES tank heater output |
-| I2C SDA | `SDA` | To main-box Nano `A4` |
-| I2C SCL | `SCL` | To main-box Nano `A5` |
-| GND | `GND` | Common ground with Nano and SSR logic reference |
+| SSR outlet box #1 control input (+) | `D7` | MAIN tank heater output |
+| SSR outlet box #1 control input (-) | `GND` | SSR control return |
+| SSR outlet box #2 control input (+) | `D6` | RES tank heater output |
+| SSR outlet box #2 control input (-) | `GND` | SSR control return |
+| Main-box Nano `5V` | `5V` | Powers the Nano main board |
+| Main-box Nano `GND` | `GND` | Common ground |
+| Main-box Nano `A4` | `SDA` | I2C data to Nano main |
+| Main-box Nano `A5` | `SCL` | I2C clock to Nano main |
 
-## Main Box Nano
+### Arduino Nano Main
 
 Role: radio + bridge
 
-### nRF24L01
-
-| Signal | Pin |
-|---|---:|
-| CE | `D9` |
-| CSN | `D10` |
-| MOSI | `D11` |
-| MISO | `D12` |
-| SCK | `D13` |
-| VCC | `3.3V` |
-| GND | `GND` |
-
-### I2C link to Uno
-
-| Signal | Pin |
-|---|---:|
-| SDA | `A4` |
-| SCL | `A5` |
-| GND | `GND` |
+| Connection | Pin | Notes |
+|---|---:|---|
+| Uno `5V` | `5V` | Powered from the Uno |
+| Uno `GND` | `GND` | Common ground with Uno and radio |
+| Uno `SDA` | `A4` | I2C data back to Uno |
+| Uno `SCL` | `A5` | I2C clock back to Uno |
+| nRF24L01 `VCC` | `3.3V` | Radio power |
+| nRF24L01 `GND` | `GND` | Radio ground |
+| nRF24L01 `CE` | `D9` | |
+| nRF24L01 `CSN` | `D10` | |
+| nRF24L01 `MOSI` | `D11` | |
+| nRF24L01 `MISO` | `D12` | |
+| nRF24L01 `SCK` | `D13` | |
 
 Important:
 
 - Add a `10 uF` capacitor across the nRF24 `VCC` and `GND` close to the module.
-- Keep the Nano, Uno, radio, and SSR control grounds common.
+- Keep the Uno, Nano, radio, and SSR control grounds common.
 
 ## Remote Box
 
 Role: sensors + UI + radio
 
-### Remote Nano nRF24L01
+### Arduino Nano Remote to nRF24L01
 
-| Signal | Pin |
+| Connection | Pin |
 |---|---:|
-| CE | `D9` |
-| CSN | `D10` |
-| MOSI | `D11` |
-| MISO | `D12` |
-| SCK | `D13` |
-| VCC | `3.3V` |
-| GND | `GND` |
+| nRF24L01 `VCC` | `3.3V` |
+| nRF24L01 `GND` | `GND` |
+| nRF24L01 `CE` | `D9` |
+| nRF24L01 `CSN` | `D10` |
+| nRF24L01 `MOSI` | `D11` |
+| nRF24L01 `MISO` | `D12` |
+| nRF24L01 `SCK` | `D13` |
 
 Important:
 
-- add a `10 uF` capacitor across `VCC` / `GND` close to the radio module
+- Add a `10 uF` capacitor across `VCC` / `GND` close to the remote radio module.
 
 ### MAX6675 #1
 
-| Signal | Pin |
+| Connection | Pin |
 |---|---:|
-| SCK | `D13` |
-| SO | `D12` |
-| CS | `D6` |
-| VCC | `5V` |
-| GND | `GND` |
+| `SCK` | `D5` |
+| `SO` | `D7` |
+| `CS` | `D6` |
+| `VCC` | `5V` |
+| `GND` | `GND` |
 
 ### MAX6675 #2
 
-| Signal | Pin |
+| Connection | Pin |
 |---|---:|
-| SCK | `D13` |
-| SO | `D12` |
-| CS | `D7` |
-| VCC | `5V` |
-| GND | `GND` |
+| `SCK` | `D5` |
+| `SO` | `A0` |
+| `CS` | `D8` |
+| `VCC` | `5V` |
+| `GND` | `GND` |
 
 ### ST7789 TFT
 
-| Signal | Pin |
+| Connection | Pin |
 |---|---:|
-| CS | `D4` |
-| DC | `D5` |
-| RST | `D8` |
-| MOSI / DIN | `D11` |
-| SCK | `D13` |
-| VCC | `VCC` |
-| GND | `GND` |
-| BL | `VCC` |
+| `VCC` | `5V` |
+| `GND` | `GND` |
+| `DIN` | `D11` |
+| `CLK` | `D13` |
+| `CS` | `A1` |
+| `DC` | `A2` |
+| `RST` | `A3` |
+| `BL` | `5V` |
 
 ### Buttons
 
 | Button | Pin | Mode |
 |---|---:|---|
-| UP | `A0` | `INPUT_PULLUP` |
-| SET | `A1` | `INPUT_PULLUP` |
-| DOWN | `A2` | `INPUT_PULLUP` |
+| Button 1 | `D2` | `INPUT_PULLUP` |
+| Button 2 | `D3` | `INPUT_PULLUP` |
+| Button 3 | `D4` | `INPUT_PULLUP` |
 
-The remote uses one side of each button to the Nano pin and the other side to `GND`.
+Each button connects between the Nano pin and `GND`.
 
-The remote box no longer owns final heater output decisions.
+The remote box does not own final heater output decisions.
 It owns sensor reads, button-driven requested setpoints, and the display.
 
 ## Wiring Summary
 
 ```text
-Remote box nRF24  <----wireless---->  Main-box Nano nRF24
-Remote box D6/D7  ----------shared--  MAX6675 chip selects
-Remote box D4/D5/D8 --------shared--  ST7789 control pins
-Remote box A0/A1/A2 --------local---  buttons
-Main-box Nano A4  <------I2C------->  Main-box Uno SDA
-Main-box Nano A5  <------I2C------->  Main-box Uno SCL
-Main-box Uno D7   ----------------->  SSR outlet box #1 control
-Main-box Uno D6   ----------------->  SSR outlet box #2 control
-All grounds common
+Main-box Uno D7  -----------------> SSR outlet box #1 control input (+)
+Main-box Uno GND -----------------> SSR outlet box #1 control input (-)
+Main-box Uno D6  -----------------> SSR outlet box #2 control input (+)
+Main-box Uno GND -----------------> SSR outlet box #2 control input (-)
+
+Main-box Uno 5V  -----------------> Main-box Nano 5V
+Main-box Uno GND -----------------> Main-box Nano GND
+Main-box Uno SDA -----------------> Main-box Nano A4
+Main-box Uno SCL -----------------> Main-box Nano A5
+
+Main-box Nano D9/D10/D11/D12/D13 -> nRF24L01 CE/CSN/MOSI/MISO/SCK
+Remote Nano D9/D10/D11/D12/D13 --> nRF24L01 CE/CSN/MOSI/MISO/SCK
+
+Remote Nano D5/D7/D6 -----------> MAX6675 #1 SCK/SO/CS
+Remote Nano D5/A0/D8 -----------> MAX6675 #2 SCK/SO/CS
+Remote Nano D11/D13/A1/A2/A3 ---> ST7789 DIN/CLK/CS/DC/RST
+Remote Nano D2/D3/D4 -----------> Button 1 / Button 2 / Button 3
+
+All board and peripheral grounds should be common.
 ```

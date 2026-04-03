@@ -28,6 +28,20 @@ MAIN BOX UNO R4 MINIMA
   SSR RES  on D6
 ```
 
+## Canonical Circuit Wiring
+
+The exact current wiring is documented in
+[`docs/HARDWARE_AND_PINOUT.md`](./docs/HARDWARE_AND_PINOUT.md).
+That wiring matches the active firmware pin maps:
+
+- Main-box Uno: `D7` -> SSR outlet box #1 control `+`, `D6` -> SSR outlet box #2 control `+`, `SDA/SCL` -> main-box Nano `A4/A5`
+- Main-box Nano: nRF24 `CE/CSN/MOSI/MISO/SCK` on `D9/D10/D11/D12/D13`
+- Remote Nano nRF24: `CE/CSN/MOSI/MISO/SCK` on `D9/D10/D11/D12/D13`
+- Remote MAX6675 #1: `SCK=D5`, `SO=D7`, `CS=D6`
+- Remote MAX6675 #2: `SCK=D5`, `SO=A0`, `CS=D8`
+- Remote ST7789: `DIN=D11`, `CLK=D13`, `CS=A1`, `DC=A2`, `RST=A3`, `BL=5V`
+- Remote buttons: `D2`, `D3`, `D4`
+
 ## What Changed
 
 - The main box is now a two-MCU system.
