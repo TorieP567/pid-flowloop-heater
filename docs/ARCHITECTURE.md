@@ -54,7 +54,7 @@ The Uno R4 remains the only board allowed to make final heater decisions.
 
 ## Remote UI Behavior
 
-The remote firmware now runs from `firmware/remote_box/remote_box.ino`.
+The remote firmware now runs from `nanoradio/nanoradio.ino`.
 
 - `SET` short press switches the selected tank
 - `SET` long press enters/exits edit mode
@@ -62,6 +62,8 @@ The remote firmware now runs from `firmware/remote_box/remote_box.ino`.
 - `UP + DOWN` hold toggles between main and debug screens locally
 
 The remote transmits local raw temperatures and requested setpoints, then displays the main-box status packet as the authoritative control state.
+
+The older monolithic sketch under `firmware/remote_box/` is deprecated and no longer the canonical implementation.
 
 ## Preserved Legacy Controller Behavior
 

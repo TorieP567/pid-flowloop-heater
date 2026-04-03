@@ -6,7 +6,7 @@ This repo now targets a split main-box architecture for the dual-tank heater sys
 - the `main-box Nano` owns the nRF24 radio and bridges data
 - the `main-box Uno R4 Minima` is the final heater-control authority
 
-The new canonical firmware lives under [`firmware/`](./firmware). The older `V03_QuickPID/` and `nanoradio/` folders are kept as legacy reference material for the original single-main-MCU design and the earlier remote sketch.
+Canonical main-box firmware lives under [`firmware/`](./firmware), and the canonical remote-box firmware lives under [`nanoradio/`](./nanoradio). The older `V03_QuickPID/` folder is kept as legacy reference material for the original single-main-MCU design. The older monolithic remote sketch in `firmware/remote_box/` is now deprecated and can be deleted.
 
 ## Current Architecture
 
@@ -60,8 +60,16 @@ firmware/
     main_box_uno.ino
   main_box_nano_bridge/
     main_box_nano_bridge.ino
-  remote_box/
-    remote_box.ino
+nanoradio/
+  nanoradio.ino
+  buttons.cpp / .h
+  sensors.cpp / .h
+  radio.cpp / .h
+  display.cpp / .h
+  serial_log.cpp / .h
+  system_packets.h
+firmware/remote_box/
+  deprecated compatibility copy; removable
 ```
 
 ### `firmware/main_box_uno/main_box_uno.ino`
@@ -97,9 +105,15 @@ firmware/
   - main-to-remote radio packets
 - Defines versioning, compact fixed-point encoding, and CRC16 checksums
 
-### `firmware/remote_box/remote_box.ino`
+### `nanoradio/nanoradio.ino`
 
 - Runs on the remote `Arduino Nano`
+- Keeps the production remote split into modules:
+  - `buttons`
+  - `sensors`
+  - `radio`
+  - `display`
+  - `serial_log`
 - Reads both MAX6675 thermocouples
 - Handles three buttons with:
   - short `SET` press = switch selected tank
@@ -109,6 +123,8 @@ firmware/
 - Sends requested setpoints plus local temperatures to the main box
 - Receives authoritative controller state back from the main box
 - Displays both requested and active setpoints so pending UI changes are obvious
+
+`firmware/remote_box/remote_box.ino` is now deprecated and can be deleted without losing active remote-box functionality.
 
 ## Key Safety Behavior
 
@@ -134,7 +150,7 @@ Use Arduino IDE 2.x or your normal CLI workflow and upload each target separatel
 
 1. Open `firmware/main_box_uno/main_box_uno.ino`, select `Arduino Uno R4 Minima`, and upload to the main-box Uno.
 2. Open `firmware/main_box_nano_bridge/main_box_nano_bridge.ino`, select `Arduino Nano`, and upload to the main-box Nano.
-3. Open `firmware/remote_box/remote_box.ino`, select `Arduino Nano`, and upload to the remote box.
+3. Open `nanoradio/nanoradio.ino`, select `Arduino Nano`, and upload to the remote box.
 
 Library requirements:
 
@@ -151,11 +167,12 @@ Library requirements:
   - `Adafruit ST7735 and ST7789 Library`
   - `max6675`
 
+Remote serial logging is optional in `nanoradio/` and is disabled by default. Set `NANORADIO_ENABLE_SERIAL_LOG` to a non-zero value before building if you want the remote box to emit the production debug stream at `115200 baud`.
+
 ## Legacy Reference Material
 
 These folders are retained as baseline/reference code and are not the active architecture:
 
 - `V03_QuickPID/`
-- `nanoradio/`
 
-The richer adaptive/self-tuning behavior in the new Uno sketch was derived from the legacy controller logic in the repo, but the active deployment path is now the `firmware/` tree above.
+The richer adaptive/self-tuning behavior in the new Uno sketch was derived from the legacy controller logic in the repo, while the active remote deployment path is now `nanoradio/`. The older monolithic sketch in `firmware/remote_box/` is deprecated and can be removed.

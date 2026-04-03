@@ -1,7 +1,8 @@
 # Hardware And Pinout
 
 This document reflects the current canonical circuit wiring for the active
-firmware under [`firmware/`](../firmware/).
+main-box firmware under [`firmware/`](../firmware/) and the active remote-box
+firmware under [`nanoradio/`](../nanoradio/).
 
 ## Main Box
 

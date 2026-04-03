@@ -186,7 +186,7 @@ The remote box should:
 6. Send packets on the `R2M01` pipe.
 7. Listen for `MainToRemotePacket` updates on the `M2R01` pipe.
 
-The implemented remote firmware in `firmware/remote_box/remote_box.ino` shows both:
+The implemented remote firmware in `nanoradio/nanoradio.ino` shows both:
 
 - `Req`: the local requested setpoint
 - `Act`: the authoritative setpoint reported back by the main box

@@ -4,6 +4,8 @@
 
 The remote box is the operator-facing node.
 
+Canonical firmware path: [`nanoradio/nanoradio.ino`](../nanoradio/nanoradio.ino)
+
 It owns:
 
 - the two thermocouple inputs

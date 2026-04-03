@@ -1,64 +1,91 @@
 #include "serial_log.h"
+
 #include "config.h"
+#include "radio.h"
+
+namespace {
+
+void logEvent(const __FlashStringHelper* text) {
+#if NANORADIO_ENABLE_SERIAL_LOG
+  Serial.println(text);
+#else
+  (void)text;
+#endif
+}
+
+void logLinkTransitions(DashboardState& state) {
+#if NANORADIO_ENABLE_SERIAL_LOG
+  const LinkState link = radio::currentLinkState(state, millis());
+  if (link != state.lastLoggedLinkState) {
+    state.lastLoggedLinkState = link;
+    switch (link) {
+      case LINK_STATE_OK: logEvent(F("Link restored")); break;
+      case LINK_STATE_DEGRADED: logEvent(F("Link degraded")); break;
+      case LINK_STATE_TIMEOUT: logEvent(F("Link timeout")); break;
+      case LINK_STATE_WAITING: logEvent(F("Waiting for main-box status")); break;
+      case LINK_STATE_NO_RADIO: logEvent(F("Radio hardware not initialized")); break;
+      default: break;
+    }
+  }
+#else
+  (void)state;
+#endif
+}
+
+void logSummary(DashboardState& state) {
+#if NANORADIO_ENABLE_SERIAL_LOG
+  const unsigned long nowMs = millis();
+  if ((nowMs - state.lastLogMs) < config::timing::LOG_INTERVAL_MS) return;
+  state.lastLogMs = nowMs;
+
+  Serial.print(F("RAW:"));
+  Serial.print(state.localTanks[config::TANK_MAIN].rawTempC, 2);
+  Serial.print('/');
+  Serial.print(state.localTanks[config::TANK_RES].rawTempC, 2);
+  Serial.print(F(",REQ:"));
+  Serial.print(state.localTanks[config::TANK_MAIN].requestedSetpointC, 1);
+  Serial.print('/');
+  Serial.print(state.localTanks[config::TANK_RES].requestedSetpointC, 1);
+  Serial.print(F(",TX:"));
+  Serial.print(state.lastOutboundPacket.sequence);
+  Serial.print(',');
+  Serial.print(state.lastTxOk ? F("OK") : F("FAIL"));
+  Serial.print(F(",RX:"));
+  Serial.print(state.haveMainStatus ? state.latestMainStatus.statusSequence : 0U);
+  Serial.print(F(",AGE:"));
+  Serial.print(state.haveMainStatus ? (nowMs - state.lastStatusRxMs) : 65535UL);
+  Serial.print(F(",LINK:"));
+  Serial.print(radio::linkStateText(radio::currentLinkState(state, nowMs)));
+  Serial.print(F(",SEL:"));
+  Serial.print(state.selectedTank == config::TANK_MAIN ? "MAIN" : "RES");
+  Serial.print(F(",EDIT:"));
+  Serial.print(state.editMode ? "ON" : "OFF");
+  Serial.print(F(",SCR:"));
+  Serial.print(state.screenMode == SCREEN_MODE_MAIN ? "MAIN" : "DEBUG");
+  Serial.print(F(",FLT:0x"));
+  Serial.print(state.haveMainStatus ? state.latestMainStatus.faultFlags : 0U, HEX);
+  Serial.print(F(",OUT:"));
+  Serial.print(state.haveMainStatus ? decodeOutputPermille(state.latestMainStatus.mainOutputPermille) : 0.0f, 1);
+  Serial.print('/');
+  Serial.print(state.haveMainStatus ? decodeOutputPermille(state.latestMainStatus.resOutputPermille) : 0.0f, 1);
+  Serial.println();
+#else
+  (void)state;
+#endif
+}
+
+}  // namespace
 
 namespace serial_log {
 
-static char buf[96];
-static uint8_t len = 0;
-static uint8_t cursor = 0;
-static unsigned long lastBuild = 0;
-
-// Append float as "XX.X" to buf at pos, return new pos
-static uint8_t appendFloat1(char* b, uint8_t pos, float v) {
-  if (v < 0) { b[pos++] = '-'; v = -v; }
-  int whole = (int)v;
-  int frac = (int)((v - whole) * 10 + 0.5f);
-  if (frac >= 10) { whole++; frac = 0; }
-  if (whole >= 100) { b[pos++] = '0' + whole / 100; whole %= 100; }
-  if (whole >= 10) b[pos++] = '0' + whole / 10;
-  b[pos++] = '0' + whole % 10;
-  b[pos++] = '.';
-  b[pos++] = '0' + frac;
-  return pos;
-}
-
-static uint8_t appendStr(char* b, uint8_t pos, const char* s) {
-  while (*s) b[pos++] = *s++;
-  return pos;
-}
-
 void init(DashboardState& state) {
-  (void)state;
+  state.lastLoggedLinkState = radio::currentLinkState(state, millis());
+  logEvent(F("Remote box ready"));
 }
 
 void update(DashboardState& state) {
-  unsigned long now = millis();
-
-  if (cursor >= len && (now - lastBuild >= SERIAL_INTERVAL)) {
-    lastBuild = now;
-    uint8_t p = 0;
-    p = appendStr(buf, p, "M=");
-    p = appendFloat1(buf, p, state.main.filteredTemp);
-    p = appendStr(buf, p, "/");
-    p = appendFloat1(buf, p, state.main.setpoint);
-    p = appendStr(buf, p, " R=");
-    p = appendFloat1(buf, p, state.res.filteredTemp);
-    p = appendStr(buf, p, "/");
-    p = appendFloat1(buf, p, state.res.setpoint);
-    p = appendStr(buf, p, state.lastTxOk ? " OK\n" : " FL\n");
-    buf[p] = '\0';
-    len = p;
-    cursor = 0;
-  }
-
-  if (cursor < len) {
-    int avail = Serial.availableForWrite();
-    if (avail > 0) {
-      uint8_t chunk = min((uint8_t)avail, (uint8_t)(len - cursor));
-      Serial.write((const uint8_t*)(buf + cursor), chunk);
-      cursor += chunk;
-    }
-  }
+  logLinkTransitions(state);
+  logSummary(state);
 }
 
-} // namespace serial_log
+}  // namespace serial_log
