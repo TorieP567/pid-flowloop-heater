@@ -20,15 +20,17 @@
 //   - place a 10 uF capacitor across nRF24 VCC/GND close to the radio module
 //
 // Pin map:
-//   Radio:   CE=D9, CSN=D10, MOSI=D11, MISO=D12, SCK=D13
-//   MAX6675: MAIN CS=D6, RES CS=D7, SO=D12, SCK=D13
-//   ST7789:  CS=D4, DC=D5, RST=D8, MOSI=D11, SCK=D13
-//   Buttons: UP=A0, SET=A1, DOWN=A2, all wired to GND with INPUT_PULLUP
+//   Radio:     CE=D9, CSN=D10, MOSI=D11, MISO=D12, SCK=D13
+//   MAX6675 #1 MAIN: SCK=D5, SO=D7, CS=D6
+//   MAX6675 #2 RES:  SCK=D5, SO=A0, CS=D8
+//   ST7789:    CS=A1, DC=A2, RST=A3, MOSI=D11, SCK=D13
+//   Buttons:   UP=D2, SET=D3, DOWN=D4, all wired to GND with INPUT_PULLUP
 // =============================================================================
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <avr/pgmspace.h>
 
 #include <SPI.h>
 #include <Wire.h>
@@ -42,6 +44,10 @@
 
 namespace {
 
+#ifndef REMOTE_BOX_ENABLE_SERIAL_LOG
+#define REMOTE_BOX_ENABLE_SERIAL_LOG 0
+#endif
+
 constexpr uint8_t TANK_COUNT = 2;
 constexpr uint8_t TANK_MAIN = 0;
 constexpr uint8_t TANK_RES = 1;
@@ -49,18 +55,19 @@ constexpr uint8_t TANK_RES = 1;
 constexpr uint8_t RADIO_CE_PIN = 9;
 constexpr uint8_t RADIO_CSN_PIN = 10;
 
-constexpr uint8_t THERMO_SCK_PIN = 13;
-constexpr uint8_t THERMO_SO_PIN = 12;
+constexpr uint8_t THERMO_SCK_PIN = 5;
+constexpr uint8_t THERMO_SO_MAIN_PIN = 7;
+constexpr uint8_t THERMO_SO_RES_PIN = A0;
 constexpr uint8_t THERMO_CS_MAIN_PIN = 6;
-constexpr uint8_t THERMO_CS_RES_PIN = 7;
+constexpr uint8_t THERMO_CS_RES_PIN = 8;
 
-constexpr uint8_t TFT_CS_PIN = 4;
-constexpr uint8_t TFT_DC_PIN = 5;
-constexpr uint8_t TFT_RST_PIN = 8;
+constexpr uint8_t TFT_CS_PIN = A1;
+constexpr uint8_t TFT_DC_PIN = A2;
+constexpr uint8_t TFT_RST_PIN = A3;
 
-constexpr uint8_t BTN_UP_PIN = A0;
-constexpr uint8_t BTN_SET_PIN = A1;
-constexpr uint8_t BTN_DOWN_PIN = A2;
+constexpr uint8_t BTN_UP_PIN = 2;
+constexpr uint8_t BTN_SET_PIN = 3;
+constexpr uint8_t BTN_DOWN_PIN = 4;
 
 constexpr float DEFAULT_SETPOINT_C = 37.0f;
 constexpr float MIN_SETPOINT_C = 20.0f;
@@ -147,8 +154,8 @@ struct TextFieldCache {
 
 RF24 radioHw(RADIO_CE_PIN, RADIO_CSN_PIN);
 Adafruit_ST7789 tft(TFT_CS_PIN, TFT_DC_PIN, TFT_RST_PIN);
-MAX6675 thermocoupleMain(THERMO_SCK_PIN, THERMO_CS_MAIN_PIN, THERMO_SO_PIN);
-MAX6675 thermocoupleRes(THERMO_SCK_PIN, THERMO_CS_RES_PIN, THERMO_SO_PIN);
+MAX6675 thermocoupleMain(THERMO_SCK_PIN, THERMO_CS_MAIN_PIN, THERMO_SO_MAIN_PIN);
+MAX6675 thermocoupleRes(THERMO_SCK_PIN, THERMO_CS_RES_PIN, THERMO_SO_RES_PIN);
 
 TankLocalState localTanks[TANK_COUNT];
 
@@ -203,6 +210,12 @@ TextFieldCache mainOutCache[TANK_COUNT] = {};
 TextFieldCache debugLineCache[10] = {};
 int8_t mainFrameSelectedTank = -1;
 bool mainFrameEditMode = false;
+
+void copyFlashString(char* out, size_t outLen, PGM_P text) {
+  if (outLen == 0) return;
+  strncpy_P(out, text, outLen - 1);
+  out[outLen - 1] = '\0';
+}
 
 float clampFloat(float value, float low, float high) {
   if (value < low) return low;
@@ -289,20 +302,18 @@ void formatFixed1(char* out, size_t outLen, float value) {
 
 void formatTemp(char* out, size_t outLen, float tempC, bool valid) {
   if (!valid || isnan(tempC)) {
-    strncpy(out, "ERR", outLen);
-    out[outLen - 1] = '\0';
+    copyFlashString(out, outLen, PSTR("ERR"));
     return;
   }
 
   char temp[12];
   formatFixed1(temp, sizeof(temp), tempC);
-  snprintf(out, outLen, "%s C", temp);
+  snprintf_P(out, outLen, PSTR("%s C"), temp);
 }
 
 void formatShortTemp(char* out, size_t outLen, float tempC, bool valid) {
   if (!valid || isnan(tempC)) {
-    strncpy(out, "--.-", outLen);
-    out[outLen - 1] = '\0';
+    copyFlashString(out, outLen, PSTR("--.-"));
     return;
   }
   formatFixed1(out, outLen, tempC);
@@ -313,7 +324,7 @@ void formatTimeHHMMSS(char* out, size_t outLen, unsigned long totalSec) {
   unsigned long hours = totalSec / 3600UL;
   unsigned long mins = (totalSec % 3600UL) / 60UL;
   unsigned long secs = totalSec % 60UL;
-  snprintf(out, outLen, "%02lu:%02lu:%02lu", hours, mins, secs);
+  snprintf_P(out, outLen, PSTR("%02lu:%02lu:%02lu"), hours, mins, secs);
 }
 
 bool statusPacketFresh(unsigned long nowMs) {
@@ -429,23 +440,29 @@ float displayTempForTank(uint8_t tank, unsigned long nowMs, bool& valid, uint16_
   return NAN;
 }
 
-void logEvent(const char* text) {
+void logEvent(const __FlashStringHelper* text) {
+#if REMOTE_BOX_ENABLE_SERIAL_LOG
   Serial.println(text);
+#else
+  (void)text;
+#endif
 }
 
 void logLinkTransitions() {
+#if REMOTE_BOX_ENABLE_SERIAL_LOG
   LinkState link = currentLinkState(millis());
   if (link != lastLoggedLinkState) {
     lastLoggedLinkState = link;
     switch (link) {
-      case LINK_STATE_OK: logEvent("Link restored"); break;
-      case LINK_STATE_DEGRADED: logEvent("Link degraded"); break;
-      case LINK_STATE_TIMEOUT: logEvent("Link timeout"); break;
-      case LINK_STATE_WAITING: logEvent("Waiting for main-box status"); break;
-      case LINK_STATE_NO_RADIO: logEvent("Radio hardware not initialized"); break;
+      case LINK_STATE_OK: logEvent(F("Link restored")); break;
+      case LINK_STATE_DEGRADED: logEvent(F("Link degraded")); break;
+      case LINK_STATE_TIMEOUT: logEvent(F("Link timeout")); break;
+      case LINK_STATE_WAITING: logEvent(F("Waiting for main-box status")); break;
+      case LINK_STATE_NO_RADIO: logEvent(F("Radio hardware not initialized")); break;
       default: break;
     }
   }
+#endif
 }
 
 void initButtons() {
@@ -522,8 +539,8 @@ bool updateButtonState(ButtonTracker& button, bool& pressedEvent, bool& released
 void toggleScreenMode() {
   screenMode = (screenMode == SCREEN_MODE_MAIN) ? SCREEN_MODE_DEBUG : SCREEN_MODE_MAIN;
   displayNeedsFullRedraw = true;
-  if (screenMode == SCREEN_MODE_MAIN) logEvent("Screen: MAIN");
-  else logEvent("Screen: DEBUG");
+  if (screenMode == SCREEN_MODE_MAIN) logEvent(F("Screen: MAIN"));
+  else logEvent(F("Screen: DEBUG"));
 }
 
 void adjustSelectedSetpoint(float deltaC) {
@@ -563,14 +580,14 @@ void handleButtons() {
     editMode = !editMode;
     pendingButtonFlags |= REMOTE_BUTTON_SET;
     displayNeedsFullRedraw = false;
-    logEvent(editMode ? "Edit mode ON" : "Edit mode OFF");
+    logEvent(editMode ? F("Edit mode ON") : F("Edit mode OFF"));
   }
 
   if (setReleased && !btnSet.longHandled) {
     selectedTank = (selectedTank == TANK_MAIN) ? TANK_RES : TANK_MAIN;
     pendingButtonFlags |= REMOTE_BUTTON_SET;
     displayNeedsFullRedraw = false;
-    logEvent(selectedTank == TANK_MAIN ? "Selected tank: MAIN" : "Selected tank: RES");
+    logEvent(selectedTank == TANK_MAIN ? F("Selected tank: MAIN") : F("Selected tank: RES"));
   }
 
   if (!comboActive && editMode) {
@@ -680,13 +697,13 @@ void drawMainStatic() {
   tft.setTextSize(2);
   tft.setTextColor(COLOR_TEXT);
   tft.setCursor(10, 7);
-  tft.print("REMOTE BOX");
+  tft.print(F("REMOTE BOX"));
   tft.setTextSize(1);
   tft.setTextColor(COLOR_DIM);
   tft.setCursor(220, 4);
-  tft.print("LINK");
+  tft.print(F("LINK"));
   tft.setCursor(220, 17);
-  tft.print("MODE");
+  tft.print(F("MODE"));
 
   tft.drawRoundRect(MAIN_X, CARD_Y, CARD_W, CARD_H, 8, COLOR_DIM);
   tft.drawRoundRect(RES_X, CARD_Y, CARD_W, CARD_H, 8, COLOR_DIM);
@@ -695,7 +712,7 @@ void drawMainStatic() {
   tft.setTextSize(1);
   tft.setTextColor(COLOR_DIM);
   tft.setCursor(16, FOOT_Y + 34);
-  tft.print("SET short=tank  long=edit  UP+DOWN hold=screen");
+  tft.print(F("SET short=tank  long=edit  UP+DOWN hold=screen"));
 
   invalidateAllCaches();
 }
@@ -726,13 +743,13 @@ void drawTankFrame(uint8_t tank) {
   tft.setTextSize(1);
   tft.setTextColor(COLOR_DIM);
   tft.setCursor(x + 10, CARD_Y + 86);
-  tft.print("Req");
+  tft.print(F("Req"));
   tft.setCursor(x + 10, CARD_Y + 102);
-  tft.print("Act");
+  tft.print(F("Act"));
   tft.setCursor(x + 10, CARD_Y + 118);
-  tft.print("Out");
+  tft.print(F("Out"));
   tft.setCursor(x + 98, CARD_Y + 118);
-  tft.print("Src");
+  tft.print(F("Src"));
 }
 
 void ensureMainFramesCurrent() {
@@ -757,52 +774,50 @@ void buildFaultSummary(char* out, size_t outLen, uint16_t& colorOut) {
   uint16_t faults = haveMainStatus ? latestMainStatus.faultFlags : 0U;
 
   if (link == LINK_STATE_NO_RADIO) {
-    strncpy(out, "Radio init failed", outLen);
+    copyFlashString(out, outLen, PSTR("Radio init failed"));
     colorOut = COLOR_FAULT;
   } else if (link == LINK_STATE_TIMEOUT) {
-    strncpy(out, "Comm timeout: retrying main box", outLen);
+    copyFlashString(out, outLen, PSTR("Comm timeout: retrying main box"));
     colorOut = COLOR_FAULT;
   } else if (link == LINK_STATE_WAITING) {
-    strncpy(out, "Waiting for main-box status", outLen);
+    copyFlashString(out, outLen, PSTR("Waiting for main-box status"));
     colorOut = COLOR_WARN;
   } else if ((faults & FAULT_LOCAL_BRIDGE) != 0U) {
-    strncpy(out, "Main-box bridge fault", outLen);
+    copyFlashString(out, outLen, PSTR("Main-box bridge fault"));
     colorOut = COLOR_FAULT;
   } else if ((faults & FAULT_REMOTE_COMM) != 0U) {
-    strncpy(out, "Remote comm fault at main box", outLen);
+    copyFlashString(out, outLen, PSTR("Remote comm fault at main box"));
     colorOut = COLOR_FAULT;
   } else if ((faults & FAULT_MAIN_OVERTEMP) != 0U) {
-    strncpy(out, "MAIN overtemp cutoff", outLen);
+    copyFlashString(out, outLen, PSTR("MAIN overtemp cutoff"));
     colorOut = COLOR_FAULT;
   } else if ((faults & FAULT_RES_OVERTEMP) != 0U) {
-    strncpy(out, "RES overtemp cutoff", outLen);
+    copyFlashString(out, outLen, PSTR("RES overtemp cutoff"));
     colorOut = COLOR_FAULT;
   } else if ((faults & FAULT_MAIN_SENSOR_INVALID) != 0U) {
-    strncpy(out, "MAIN sensor invalid", outLen);
+    copyFlashString(out, outLen, PSTR("MAIN sensor invalid"));
     colorOut = COLOR_FAULT;
   } else if ((faults & FAULT_RES_SENSOR_INVALID) != 0U) {
-    strncpy(out, "RES sensor invalid", outLen);
+    copyFlashString(out, outLen, PSTR("RES sensor invalid"));
     colorOut = COLOR_FAULT;
   } else if ((faults & (FAULT_MAIN_WARN | FAULT_RES_WARN)) != 0U) {
-    strncpy(out, "Temperature warning active", outLen);
+    copyFlashString(out, outLen, PSTR("Temperature warning active"));
     colorOut = COLOR_WARN;
   } else if ((localTanks[TANK_MAIN].valid && localTanks[TANK_MAIN].rawTempC >= HARD_MAX_TEMP_C) ||
              (localTanks[TANK_RES].valid && localTanks[TANK_RES].rawTempC >= HARD_MAX_TEMP_C)) {
-    strncpy(out, "Local sensor over hard max", outLen);
+    copyFlashString(out, outLen, PSTR("Local sensor over hard max"));
     colorOut = COLOR_FAULT;
   } else if ((localTanks[TANK_MAIN].valid && localTanks[TANK_MAIN].rawTempC >= WARN_TEMP_C) ||
              (localTanks[TANK_RES].valid && localTanks[TANK_RES].rawTempC >= WARN_TEMP_C)) {
-    strncpy(out, "Local sensor warning", outLen);
+    copyFlashString(out, outLen, PSTR("Local sensor warning"));
     colorOut = COLOR_WARN;
   } else if (!localTanks[TANK_MAIN].valid || !localTanks[TANK_RES].valid) {
-    strncpy(out, "Check thermocouple inputs", outLen);
+    copyFlashString(out, outLen, PSTR("Check thermocouple inputs"));
     colorOut = COLOR_WARN;
   } else {
-    strncpy(out, "System OK", outLen);
+    copyFlashString(out, outLen, PSTR("System OK"));
     colorOut = COLOR_OK;
   }
-
-  out[outLen - 1] = '\0';
 }
 
 void updateMainScreen() {
@@ -815,7 +830,8 @@ void updateMainScreen() {
   updateTextField(mainLinkCache, linkStateText(link), linkStateColor(link),
                   220, 4, 94, 10, 1, COLOR_PANEL);
 
-  snprintf(line, sizeof(line), "%s %s", editMode ? "EDIT" : "VIEW", selectedTank == TANK_MAIN ? "MAIN" : "RES");
+  snprintf_P(line, sizeof(line), PSTR("%s %s"), editMode ? "EDIT" : "VIEW",
+             selectedTank == TANK_MAIN ? "MAIN" : "RES");
   updateTextField(mainModeCache, line, editMode ? COLOR_ACCENT : COLOR_TEXT,
                   220, 17, 94, 10, 1, COLOR_PANEL);
 
@@ -843,7 +859,7 @@ void updateMainScreen() {
     bool actValid = false;
     float actSetpoint = activeSetpointFromMain(tank, actValid);
     if (!haveMainStatus) {
-      strncpy(line, "--.-", sizeof(line));
+      copyFlashString(line, sizeof(line), PSTR("--.-"));
     } else {
       formatShortTemp(line, sizeof(line), actSetpoint, actValid);
     }
@@ -856,11 +872,12 @@ void updateMainScreen() {
     bool outValid = false;
     float outputPct = outputPctFromMain(tank, outValid);
     if (!outValid) {
-      strncpy(line, "--.-%", sizeof(line));
+      copyFlashString(line, sizeof(line), PSTR("--.-%"));
     } else {
       char pctText[12];
       formatFixed1(pctText, sizeof(pctText), outputPct);
-      snprintf(line, sizeof(line), "%s%% %s", pctText, heaterOnFromMain(tank) ? "ON" : "OFF");
+      snprintf_P(line, sizeof(line), PSTR("%s%% %s"), pctText,
+                 heaterOnFromMain(tank) ? "ON" : "OFF");
     }
     line[sizeof(line) - 1] = '\0';
     updateTextField(mainOutCache[tank], line,
@@ -877,8 +894,8 @@ void updateMainScreen() {
   char footerBuf[32];
   unsigned long atSetpointSec = haveMainStatus ? latestMainStatus.atSetpointSeconds : 0UL;
   formatTimeHHMMSS(timeBuf, sizeof(timeBuf), atSetpointSec);
-  snprintf(footerBuf, sizeof(footerBuf), "Ack:%u OK:%lu At:%s",
-           lastStatusSequence, txOkCount, timeBuf);
+  snprintf_P(footerBuf, sizeof(footerBuf), PSTR("Ack:%u OK:%lu At:%s"),
+             lastStatusSequence, txOkCount, timeBuf);
   updateTextField(mainInfoCache, footerBuf, COLOR_DIM,
                   16, FOOT_Y + 22, 288, 12, 1, COLOR_BG);
 }
@@ -890,11 +907,11 @@ void drawDebugStatic() {
   tft.setTextSize(2);
   tft.setTextColor(COLOR_TEXT, COLOR_PANEL);
   tft.setCursor(10, 5);
-  tft.print("REMOTE DEBUG");
+  tft.print(F("REMOTE DEBUG"));
   tft.setTextSize(1);
   tft.setTextColor(COLOR_DIM);
   tft.setCursor(12, 224);
-  tft.print("UP+DOWN hold toggles screen");
+  tft.print(F("UP+DOWN hold toggles screen"));
 
   for (uint8_t index = 0; index < 10; ++index) {
     invalidateField(debugLineCache[index]);
@@ -913,62 +930,59 @@ void updateDebugScreen() {
   char tempA[12];
   char tempB[12];
 
-  snprintf(line, sizeof(line), "Link:%s  Screen:%s", linkStateText(currentLinkState(nowMs)),
-           screenMode == SCREEN_MODE_MAIN ? "MAIN" : "DEBUG");
+  snprintf_P(line, sizeof(line), PSTR("Link:%s  Screen:%s"), linkStateText(currentLinkState(nowMs)),
+             screenMode == SCREEN_MODE_MAIN ? "MAIN" : "DEBUG");
   updateDebugLine(0, line, linkStateColor(currentLinkState(nowMs)));
 
-  snprintf(line, sizeof(line), "Sel:%s  Edit:%s  Btn:0x%02X",
-           selectedTank == TANK_MAIN ? "MAIN" : "RES", editMode ? "ON" : "OFF", pendingButtonFlags);
+  snprintf_P(line, sizeof(line), PSTR("Sel:%s  Edit:%s  Btn:0x%02X"),
+             selectedTank == TANK_MAIN ? "MAIN" : "RES", editMode ? "ON" : "OFF", pendingButtonFlags);
   updateDebugLine(1, line, COLOR_TEXT);
 
   formatShortTemp(tempA, sizeof(tempA), localTanks[TANK_MAIN].rawTempC, localTanks[TANK_MAIN].valid);
   formatShortTemp(tempB, sizeof(tempB), localTanks[TANK_RES].rawTempC, localTanks[TANK_RES].valid);
-  snprintf(line, sizeof(line), "Raw M:%s  R:%s", tempA, tempB);
+  snprintf_P(line, sizeof(line), PSTR("Raw M:%s  R:%s"), tempA, tempB);
   updateDebugLine(2, line, (!localTanks[TANK_MAIN].valid || !localTanks[TANK_RES].valid) ? COLOR_WARN : COLOR_TEXT);
 
   formatFixed1(tempA, sizeof(tempA), localTanks[TANK_MAIN].requestedSetpointC);
   formatFixed1(tempB, sizeof(tempB), localTanks[TANK_RES].requestedSetpointC);
-  snprintf(line, sizeof(line), "Req M:%s  R:%s", tempA, tempB);
+  snprintf_P(line, sizeof(line), PSTR("Req M:%s  R:%s"), tempA, tempB);
   updateDebugLine(3, line, COLOR_TEXT);
 
   if (haveMainStatus) {
     formatShortTemp(tempA, sizeof(tempA), decodeTempCx100(latestMainStatus.mainSetpointCx100), true);
     formatShortTemp(tempB, sizeof(tempB), decodeTempCx100(latestMainStatus.resSetpointCx100), true);
-    snprintf(line, sizeof(line), "Act M:%s  R:%s", tempA, tempB);
+    snprintf_P(line, sizeof(line), PSTR("Act M:%s  R:%s"), tempA, tempB);
   } else {
-    strncpy(line, "Act M:--.-  R:--.-", sizeof(line));
-    line[sizeof(line) - 1] = '\0';
+    copyFlashString(line, sizeof(line), PSTR("Act M:--.-  R:--.-"));
   }
   updateDebugLine(4, line, statusPacketFresh(nowMs) ? COLOR_TEXT : COLOR_WARN);
 
-  snprintf(line, sizeof(line), "TX seq:%u  RX seq:%u",
-           lastOutboundPacket.sequence, haveMainStatus ? latestMainStatus.statusSequence : 0U);
+  snprintf_P(line, sizeof(line), PSTR("TX seq:%u  RX seq:%u"),
+             lastOutboundPacket.sequence, haveMainStatus ? latestMainStatus.statusSequence : 0U);
   updateDebugLine(5, line, COLOR_TEXT);
 
-  snprintf(line, sizeof(line), "RX age:%lu ms  Ctrl age:%u",
-           haveMainStatus ? (nowMs - lastStatusRxMs) : 65535UL,
-           haveMainStatus ? latestMainStatus.controllerAgeMs : 65535U);
+  snprintf_P(line, sizeof(line), PSTR("RX age:%lu ms  Ctrl age:%u"),
+             haveMainStatus ? (nowMs - lastStatusRxMs) : 65535UL,
+             haveMainStatus ? latestMainStatus.controllerAgeMs : 65535U);
   updateDebugLine(6, line, statusPacketFresh(nowMs) ? COLOR_TEXT : COLOR_WARN);
 
   if (haveMainStatus) {
     formatFixed1(tempA, sizeof(tempA), decodeOutputPermille(latestMainStatus.mainOutputPermille));
     formatFixed1(tempB, sizeof(tempB), decodeOutputPermille(latestMainStatus.resOutputPermille));
-    snprintf(line, sizeof(line), "Out M:%s  R:%s  Heat:%02X",
-             tempA, tempB,
-             latestMainStatus.heaterFlags);
+    snprintf_P(line, sizeof(line), PSTR("Out M:%s  R:%s  Heat:%02X"),
+               tempA, tempB, latestMainStatus.heaterFlags);
   } else {
-    strncpy(line, "Out M:--.-  R:--.-  Heat:00", sizeof(line));
-    line[sizeof(line) - 1] = '\0';
+    copyFlashString(line, sizeof(line), PSTR("Out M:--.-  R:--.-  Heat:00"));
   }
   updateDebugLine(7, line, COLOR_TEXT);
 
-  snprintf(line, sizeof(line), "Fault:0x%04X  Link:0x%02X",
-           haveMainStatus ? latestMainStatus.faultFlags : 0U,
-           haveMainStatus ? latestMainStatus.linkFlags : 0U);
+  snprintf_P(line, sizeof(line), PSTR("Fault:0x%04X  Link:0x%02X"),
+             haveMainStatus ? latestMainStatus.faultFlags : 0U,
+             haveMainStatus ? latestMainStatus.linkFlags : 0U);
   updateDebugLine(8, line, (haveMainStatus && latestMainStatus.faultFlags != 0U) ? COLOR_WARN : COLOR_TEXT);
 
-  snprintf(line, sizeof(line), "TX ok:%lu fail:%lu  RX ok:%lu bad:%lu",
-           txOkCount, txFailCount, rxOkCount, rxBadCount);
+  snprintf_P(line, sizeof(line), PSTR("TX ok:%lu fail:%lu  RX ok:%lu bad:%lu"),
+             txOkCount, txFailCount, rxOkCount, rxBadCount);
   updateDebugLine(9, line, COLOR_DIM);
 }
 
@@ -988,47 +1002,51 @@ void updateDisplay() {
 }
 
 void logSummary() {
+#if REMOTE_BOX_ENABLE_SERIAL_LOG
   unsigned long nowMs = millis();
   if ((nowMs - lastLogMs) < LOG_INTERVAL_MS) return;
   lastLogMs = nowMs;
 
-  Serial.print("RAW:");
+  Serial.print(F("RAW:"));
   Serial.print(localTanks[TANK_MAIN].rawTempC, 2);
-  Serial.print("/");
+  Serial.print('/');
   Serial.print(localTanks[TANK_RES].rawTempC, 2);
-  Serial.print(",REQ:");
+  Serial.print(F(",REQ:"));
   Serial.print(localTanks[TANK_MAIN].requestedSetpointC, 1);
-  Serial.print("/");
+  Serial.print('/');
   Serial.print(localTanks[TANK_RES].requestedSetpointC, 1);
-  Serial.print(",TX:");
+  Serial.print(F(",TX:"));
   Serial.print(lastOutboundPacket.sequence);
-  Serial.print(",");
-  Serial.print(lastTxOk ? "OK" : "FAIL");
-  Serial.print(",RX:");
+  Serial.print(',');
+  Serial.print(lastTxOk ? F("OK") : F("FAIL"));
+  Serial.print(F(",RX:"));
   Serial.print(haveMainStatus ? latestMainStatus.statusSequence : 0U);
-  Serial.print(",AGE:");
+  Serial.print(F(",AGE:"));
   Serial.print(haveMainStatus ? (nowMs - lastStatusRxMs) : 65535UL);
-  Serial.print(",LINK:");
+  Serial.print(F(",LINK:"));
   Serial.print(linkStateText(currentLinkState(nowMs)));
-  Serial.print(",SEL:");
+  Serial.print(F(",SEL:"));
   Serial.print(selectedTank == TANK_MAIN ? "MAIN" : "RES");
-  Serial.print(",EDIT:");
+  Serial.print(F(",EDIT:"));
   Serial.print(editMode ? "ON" : "OFF");
-  Serial.print(",SCR:");
+  Serial.print(F(",SCR:"));
   Serial.print(screenMode == SCREEN_MODE_MAIN ? "MAIN" : "DEBUG");
-  Serial.print(",FLT:0x");
+  Serial.print(F(",FLT:0x"));
   Serial.print(haveMainStatus ? latestMainStatus.faultFlags : 0U, HEX);
-  Serial.print(",OUT:");
+  Serial.print(F(",OUT:"));
   Serial.print(haveMainStatus ? decodeOutputPermille(latestMainStatus.mainOutputPermille) : 0.0f, 1);
-  Serial.print("/");
+  Serial.print('/');
   Serial.print(haveMainStatus ? decodeOutputPermille(latestMainStatus.resOutputPermille) : 0.0f, 1);
   Serial.println();
+#endif
 }
 
 }  // namespace
 
 void setup() {
+#if REMOTE_BOX_ENABLE_SERIAL_LOG
   Serial.begin(115200);
+#endif
 
   localTanks[TANK_MAIN].requestedSetpointC = DEFAULT_SETPOINT_C;
   localTanks[TANK_RES].requestedSetpointC = DEFAULT_SETPOINT_C;
@@ -1047,7 +1065,7 @@ void setup() {
   sensorsReadyAtMs = bootMs + MAX6675_STARTUP_MS;
   lastLoggedLinkState = currentLinkState(bootMs);
 
-  logEvent("Remote box ready");
+  logEvent(F("Remote box ready"));
 }
 
 void loop() {
