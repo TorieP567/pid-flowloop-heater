@@ -22,7 +22,7 @@
 #include <string.h>
 #include <Wire.h>
 
-#include "../shared/system_packets.h"
+#include "system_packets.h"
 
 namespace {
 
