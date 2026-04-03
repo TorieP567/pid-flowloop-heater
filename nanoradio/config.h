@@ -2,7 +2,6 @@
 #define CONFIG_H
 
 #include <Arduino.h>
-#include <Adafruit_GFX.h>
 #include <math.h>
 
 #include "system_packets.h"
@@ -83,16 +82,16 @@ constexpr unsigned long STATUS_TIMEOUT_MS = 2000UL;
 // Display colors
 // -----------------------------------------------------------------------------
 namespace color {
-constexpr uint16_t COLOR_BG = ST77XX_BLACK;
+constexpr uint16_t COLOR_BG = 0x0000;       // black
 constexpr uint16_t COLOR_PANEL = 0x1084;
 constexpr uint16_t COLOR_PANEL_ALT = 0x18C6;
 constexpr uint16_t COLOR_DIM = 0x8410;
-constexpr uint16_t COLOR_ACCENT = ST77XX_CYAN;
-constexpr uint16_t COLOR_OK = ST77XX_GREEN;
-constexpr uint16_t COLOR_WARN = ST77XX_YELLOW;
-constexpr uint16_t COLOR_FAULT = ST77XX_RED;
+constexpr uint16_t COLOR_ACCENT = 0x07FF;   // cyan
+constexpr uint16_t COLOR_OK = 0x07E0;       // green
+constexpr uint16_t COLOR_WARN = 0xFFE0;     // yellow
+constexpr uint16_t COLOR_FAULT = 0xF800;    // red
 constexpr uint16_t COLOR_LOCAL = 0x7D7C;
-constexpr uint16_t COLOR_TEXT = ST77XX_WHITE;
+constexpr uint16_t COLOR_TEXT = 0xFFFF;     // white
 }  // namespace color
 
 // -----------------------------------------------------------------------------
