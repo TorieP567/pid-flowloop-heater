@@ -33,7 +33,6 @@
 #include <avr/pgmspace.h>
 
 #include <SPI.h>
-#include <Wire.h>
 #include <RF24.h>
 #include <nRF24L01.h>
 #include <Adafruit_GFX.h>
