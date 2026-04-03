@@ -33,7 +33,7 @@
 #include <nRF24L01.h>
 #include <RF24.h>
 
-#include "../shared/system_packets.h"
+#include "system_packets.h"
 
 namespace {
 
