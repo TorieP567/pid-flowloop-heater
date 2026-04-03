@@ -1,3 +1,5 @@
+#include <Arduino.h>
+#line 1 "C:\\Users\\18tor\\Downloads\\MechResearch\\pid-flowloop-heater\\firmware\\remote_box\\remote_box.ino"
 // =============================================================================
 // REMOTE BOX
 // Arduino Nano handheld UI / sensor / radio node for the dual-tank heater.
@@ -1096,6 +1098,11 @@ void logSummary() {
 
 }  // namespace
 
+#line 1099 "C:\\Users\\18tor\\Downloads\\MechResearch\\pid-flowloop-heater\\firmware\\remote_box\\remote_box.ino"
+void setup();
+#line 1126 "C:\\Users\\18tor\\Downloads\\MechResearch\\pid-flowloop-heater\\firmware\\remote_box\\remote_box.ino"
+void loop();
+#line 1099 "C:\\Users\\18tor\\Downloads\\MechResearch\\pid-flowloop-heater\\firmware\\remote_box\\remote_box.ino"
 void setup() {
 #if REMOTE_BOX_ENABLE_SERIAL_LOG
   Serial.begin(115200);
@@ -1132,3 +1139,4 @@ void loop() {
   logLinkTransitions();
   logSummary();
 }
+
