@@ -6,12 +6,6 @@
 #include "config.h"
 #include "system_packets.h"
 
-// Screen pages rendered by the remote UI.
-enum ScreenMode : uint8_t {
-  SCREEN_MODE_MAIN = 0,
-  SCREEN_MODE_DEBUG = 1
-};
-
 // Health summary for the remote -> main -> remote status path.
 enum LinkState : uint8_t {
   LINK_STATE_NO_RADIO = 0,
@@ -34,6 +28,7 @@ struct ButtonTracker {
 // Local tank data gathered on the remote before the main box acknowledges it.
 struct TankLocalState {
   float rawTempC;
+  float lastSampleC;
   float filteredTempC;
   bool valid;
   float requestedSetpointC;
@@ -57,9 +52,6 @@ struct DashboardState {
   bool editMode;
   // True while UP/DOWN should change the selected tank setpoint.
 
-  ScreenMode screenMode;
-  // Which screen the display module should render.
-
   bool displayNeedsFullRedraw;
   // Requests a full static redraw, used when switching screens or recovering
   // from boot.
@@ -75,12 +67,6 @@ struct DashboardState {
 
   bool sensorsReady;
   // True after the MAX6675 startup delay has elapsed.
-
-  bool screenToggleComboHandled;
-  // Latches the UP+DOWN combo so the debug screen toggles only once per hold.
-
-  unsigned long screenToggleComboStartMs;
-  // Timestamp when UP+DOWN began being held together.
 
   RemoteToMainPacket lastOutboundPacket;
   // Last packet transmitted toward the main box.

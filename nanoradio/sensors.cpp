@@ -43,10 +43,12 @@ void readSensors(DashboardState& state) {
   config::prepareForSensors();
   const float resTemp = thermocoupleRes.readCelsius();
 
+  state.localTanks[config::TANK_MAIN].lastSampleC = mainTemp;
   state.localTanks[config::TANK_MAIN].valid = config::isReasonableTemp(mainTemp);
   state.localTanks[config::TANK_MAIN].rawTempC =
       state.localTanks[config::TANK_MAIN].valid ? mainTemp : NAN;
 
+  state.localTanks[config::TANK_RES].lastSampleC = resTemp;
   state.localTanks[config::TANK_RES].valid = config::isReasonableTemp(resTemp);
   state.localTanks[config::TANK_RES].rawTempC =
       state.localTanks[config::TANK_RES].valid ? resTemp : NAN;

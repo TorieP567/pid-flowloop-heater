@@ -7,7 +7,11 @@
 #include "system_packets.h"
 
 #ifndef NANORADIO_ENABLE_SERIAL_LOG
-#define NANORADIO_ENABLE_SERIAL_LOG 0
+#define NANORADIO_ENABLE_SERIAL_LOG 1
+#endif
+
+#ifndef NANORADIO_ENABLE_BOOT_DISPLAY_TEST
+#define NANORADIO_ENABLE_BOOT_DISPLAY_TEST 1
 #endif
 
 namespace config {

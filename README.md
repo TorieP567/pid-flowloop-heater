@@ -167,7 +167,7 @@ Library requirements:
   - `Adafruit ST7735 and ST7789 Library`
   - `max6675`
 
-Remote serial logging is optional in `nanoradio/` and is disabled by default. Set `NANORADIO_ENABLE_SERIAL_LOG` to a non-zero value before building if you want the remote box to emit the production debug stream at `115200 baud`.
+Remote serial diagnostics in `nanoradio/` are enabled by default so bring-up on a new PCB is easier. The remote emits a startup hardware-check banner plus the ongoing debug stream at `115200 baud`. Set `NANORADIO_ENABLE_SERIAL_LOG` to `0` in [`nanoradio/config.h`](./nanoradio/config.h) if you want to silence it later.
 
 ## Legacy Reference Material
 

@@ -46,6 +46,7 @@ namespace {
 void initializeState(DashboardState& dashboard) {
   for (uint8_t tank = 0; tank < config::TANK_COUNT; ++tank) {
     dashboard.localTanks[tank].rawTempC = NAN;
+    dashboard.localTanks[tank].lastSampleC = NAN;
     dashboard.localTanks[tank].filteredTempC = config::setpoint::DEFAULT_SETPOINT_C;
     dashboard.localTanks[tank].valid = false;
     dashboard.localTanks[tank].requestedSetpointC = config::setpoint::DEFAULT_SETPOINT_C;
@@ -67,15 +68,12 @@ void initializeState(DashboardState& dashboard) {
 
   dashboard.selectedTank = config::TANK_MAIN;
   dashboard.editMode = false;
-  dashboard.screenMode = SCREEN_MODE_MAIN;
   dashboard.displayNeedsFullRedraw = true;
 
   dashboard.radioInitOk = false;
   dashboard.lastTxOk = false;
   dashboard.haveMainStatus = false;
   dashboard.sensorsReady = false;
-  dashboard.screenToggleComboHandled = false;
-  dashboard.screenToggleComboStartMs = 0;
 
   dashboard.lastOutboundPacket = RemoteToMainPacket();
   dashboard.latestMainStatus = MainToRemotePacket();

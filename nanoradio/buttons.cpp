@@ -50,11 +50,6 @@ bool updateButtonState(ButtonTracker& button, bool& pressedEvent, bool& released
   return false;
 }
 
-void toggleScreenMode(DashboardState& state) {
-  state.screenMode = (state.screenMode == SCREEN_MODE_MAIN) ? SCREEN_MODE_DEBUG : SCREEN_MODE_MAIN;
-  state.displayNeedsFullRedraw = true;
-}
-
 bool adjustSelectedSetpoint(DashboardState& state, float deltaC) {
   TankLocalState& tank = state.localTanks[state.selectedTank];
   const float updated = config::clampFloat(
@@ -104,21 +99,6 @@ void update(DashboardState& state) {
   ButtonTracker& setButton = state.buttons[BUTTON_INDEX_SET];
   ButtonTracker& downButton = state.buttons[BUTTON_INDEX_DOWN];
 
-  const bool comboActive = (upButton.stableState == LOW) && (downButton.stableState == LOW);
-  if (comboActive) {
-    if (state.screenToggleComboStartMs == 0) {
-      state.screenToggleComboStartMs = nowMs;
-    }
-    if (!state.screenToggleComboHandled &&
-        (nowMs - state.screenToggleComboStartMs) >= config::timing::SCREEN_TOGGLE_HOLD_MS) {
-      state.screenToggleComboHandled = true;
-      toggleScreenMode(state);
-    }
-  } else {
-    state.screenToggleComboStartMs = 0;
-    state.screenToggleComboHandled = false;
-  }
-
   if (setButton.stableState == LOW &&
       !setButton.longHandled &&
       (nowMs - setButton.pressedAtMs) >= config::timing::SET_LONG_PRESS_MS) {
@@ -134,7 +114,7 @@ void update(DashboardState& state) {
     setButtonEvent(state, "SET");
   }
 
-  if (!comboActive && state.editMode) {
+  if (state.editMode) {
     if (upPressed && downButton.stableState != LOW) {
       if (adjustSelectedSetpoint(state, config::setpoint::SETPOINT_STEP_C)) {
         state.pendingButtonFlags |= REMOTE_BUTTON_UP;

@@ -43,7 +43,7 @@ In Arduino IDE:
 3. Upload the `main_box_nano_bridge` sketch second.
 4. Open the serial monitor for the Nano bridge at `115200`.
 5. Upload the `nanoradio` sketch third.
-6. If `NANORADIO_ENABLE_SERIAL_LOG` is enabled, open the serial monitor for the remote box at `115200`.
+6. Open the serial monitor for the remote box at `115200`.
 7. Power the full system and verify the packet chain starts updating.
 
 ## Serial Debug Expectations
@@ -75,9 +75,12 @@ The Nano logs:
 
 ### Remote box debug stream
 
-When `NANORADIO_ENABLE_SERIAL_LOG` is enabled, the remote logs:
+The remote now enables serial diagnostics by default and logs:
 
 - raw MAX6675 readings
+- startup pass/fail hints for both MAX6675 channels
+- nRF24 init success/failure hints
+- TFT startup self-test expectations
 - requested setpoints
 - uplink packet sequence and send result
 - downlink status sequence and receive age
