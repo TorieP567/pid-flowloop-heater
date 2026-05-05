@@ -15,6 +15,10 @@
 #define NANORADIO_ENABLE_BOOT_DISPLAY_TEST 1
 #endif
 
+#ifndef NANORADIO_ENABLE_BOOT_FONT_TEST
+#define NANORADIO_ENABLE_BOOT_FONT_TEST 1
+#endif
+
 namespace config {
 
 // -----------------------------------------------------------------------------

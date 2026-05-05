@@ -59,6 +59,82 @@ bool floatChanged(float a, float b, float tolerance = 0.05f) {
   return fabsf(a - b) > tolerance;
 }
 
+void clearField(int x, int y, int w, int h);
+
+void formatTempText(char* out, float tempC, bool valid) {
+  if (!valid || isnan(tempC)) {
+    out[0] = 'E';
+    out[1] = 'R';
+    out[2] = 'R';
+    out[3] = '\0';
+    return;
+  }
+
+  // Build a plain ASCII number manually so the decimal digit is rendered with
+  // the same built-in font path as the rest of the temperature text.
+  long scaled = static_cast<long>(tempC * 10.0f + (tempC >= 0.0f ? 0.5f : -0.5f));
+  if (scaled < 0) {
+    *out++ = '-';
+    scaled = -scaled;
+  }
+
+  unsigned long whole = static_cast<unsigned long>(scaled / 10L);
+  const uint8_t frac = static_cast<uint8_t>(scaled % 10L);
+
+  char digits[6];
+  uint8_t count = 0;
+  do {
+    digits[count++] = static_cast<char>('0' + (whole % 10UL));
+    whole /= 10UL;
+  } while (whole > 0UL && count < sizeof(digits));
+
+  while (count > 0) {
+    *out++ = digits[--count];
+  }
+
+  *out++ = '.';
+  *out++ = static_cast<char>('0' + frac);
+  *out = '\0';
+}
+
+void drawTempText(int x, int y, int w, int h, const TankLocalState& tank, uint16_t color) {
+  char buf[10];
+  formatTempText(buf, tank.filteredTempC, tank.valid);
+
+  // Clear the entire number region first, then redraw with the classic
+  // Adafruit_GFX font and an explicit background color. This prevents the
+  // digit after the decimal from being partially overwritten by stale pixels
+  // or neighboring UI elements.
+  clearField(x, y, w, h);
+  config::prepareForTft();
+  tft.setFont(NULL);
+  tft.setTextWrap(false);
+  tft.setTextSize(3);
+  tft.setTextColor(color, config::color::COLOR_BG);
+  tft.setCursor(x, y);
+  tft.print(buf);
+}
+
+void drawBootFontTest() {
+#if NANORADIO_ENABLE_BOOT_FONT_TEST
+  config::prepareForTft();
+  tft.fillScreen(config::color::COLOR_BG);
+  tft.setFont(NULL);
+  tft.setTextWrap(false);
+  tft.setTextColor(ST77XX_GREEN, config::color::COLOR_BG);
+  tft.setTextSize(2);
+  tft.setCursor(10, 20);
+  tft.print(F("FONT TEST"));
+  tft.setCursor(10, 55);
+  tft.print(F("0123456789"));
+  tft.setCursor(10, 85);
+  tft.print(F(". - 24.1"));
+  tft.setCursor(10, 115);
+  tft.print(F("27.0 100.0"));
+  delay(1200);
+#endif
+}
+
 void drawBootDisplayTest() {
 #if NANORADIO_ENABLE_BOOT_DISPLAY_TEST
   config::prepareForTft();
@@ -244,18 +320,10 @@ void drawTankValuesDirty(int x, int y, const TankLocalState& tank, TankCache& ta
   const bool statusChanged = (currentStatus != tankCache.statusCode);
 
   if (floatChanged(tank.filteredTempC, tankCache.temp) || statusChanged) {
-    clearField(x + 10, y + 28, 70, 40);
-    config::prepareForTft();
     if (tank.valid) {
-      tft.setTextSize(4);
-      tft.setTextColor(sensors::getStatusColor(tank));
-      tft.setCursor(x + 10, y + 30);
-      tft.print(tank.filteredTempC, 1);
+      drawTempText(x + 10, y + 30, 126, 28, tank, sensors::getStatusColor(tank));
     } else {
-      tft.setTextSize(3);
-      tft.setTextColor(config::color::COLOR_FAULT);
-      tft.setCursor(x + 10, y + 34);
-      tft.print(F("ERR"));
+      drawTempText(x + 10, y + 30, 126, 28, tank, config::color::COLOR_FAULT);
     }
     tankCache.temp = tank.filteredTempC;
   }
@@ -436,6 +504,7 @@ void init(DashboardState& state) {
   tft.setRotation(1);
   tft.setTextWrap(false);
   drawBootDisplayTest();
+  drawBootFontTest();
 
   drawStaticUI(state);
   drawHeaderRadioField(state);

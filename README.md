@@ -169,6 +169,8 @@ Library requirements:
 
 Remote serial diagnostics in `nanoradio/` are enabled by default so bring-up on a new PCB is easier. The remote emits a startup hardware-check banner plus the ongoing debug stream at `115200 baud`. Set `NANORADIO_ENABLE_SERIAL_LOG` to `0` in [`nanoradio/config.h`](./nanoradio/config.h) if you want to silence it later.
 
+The remote dashboard's large tank-temperature field is also rendered through a plain ASCII buffer with the classic Adafruit_GFX font so one-decimal values like `27.0` and `24.1` draw reliably on the ST7789 without corrupted trailing digits.
+
 ## Legacy Reference Material
 
 These folders are retained as baseline/reference code and are not the active architecture:

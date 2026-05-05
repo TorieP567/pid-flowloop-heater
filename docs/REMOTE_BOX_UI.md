@@ -44,6 +44,12 @@ For each tank it shows:
   - `LAST` when the last returned controller temperature is stale but not timed out
   - `LOCAL` when the screen falls back to the local raw thermocouple reading
 
+Temperature rendering note:
+
+- the large `MAIN` / `RES` temperature is drawn from a plain ASCII buffer with one decimal place
+- the classic built-in Adafruit_GFX font is used for that field
+- the whole temperature-number area is cleared before redraw so the digit after the decimal is not left corrupted by stale pixels
+
 The footer shows:
 
 - link status
